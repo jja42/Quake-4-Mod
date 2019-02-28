@@ -201,6 +201,8 @@ public:
 	int						carryOverWeapons;
 // RITUAL END
 	int						powerups;
+	int						stamina;
+	int						maxstamina;
 	int						armor;
 	int						maxarmor;
 	int						ammo[ MAX_AMMO ];
@@ -355,6 +357,7 @@ public:
 	int						nextAmmoRegenPulse[ MAX_AMMO ];	// time when ammo will regenerate
 	int						nextArmorPulse;		// time when armor will tick down
 	bool					hiddenWeapon;		// if the weapon is hidden ( in noWeapons maps )
+	int						nextStaminaPulse;
 
 	// mp stuff
 	int						spectator;

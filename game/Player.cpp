@@ -73,6 +73,7 @@ const int	POWERUP_BLINK_TIME	= 1000;			// Time between powerup wear off sounds
 const float MIN_BOB_SPEED		= 5.0f;			// minimum speed to bob and play run/walk animations at
 const int	MAX_RESPAWN_TIME	= 10000;
 const int	RAGDOLL_DEATH_TIME	= 3000;
+const int	STAMINA_PULSE		= 1000;	
 #ifdef _XENON
 	const int	RAGDOLL_DEATH_TIME_XEN_SP	= 1000;
 	const int	MAX_RESPAWN_TIME_XEN_SP	= 3000;
@@ -200,6 +201,8 @@ idInventory::Clear
 */
 void idInventory::Clear( void ) {
 	maxHealth			= 0;
+	stamina				= 0;
+	maxstamina			= 0;
 	weapons				= 0;
 	carryOverWeapons	= 0;
 	powerups			= 0;
@@ -272,6 +275,9 @@ void idInventory::GetPersistantData( idDict &dict ) {
 	const idKeyValue *kv;
 	const char *name;
 
+	// stamina
+	dict.SetInt("stamina", stamina);
+
 	// armor
 	dict.SetInt( "armor", armor );
 
@@ -335,10 +341,12 @@ void idInventory::RestoreInventory( idPlayer *owner, const idDict &dict ) {
 	//We might not need to clear it out.
 	//Clear();
 
-	// health/armor
+	// health/armor/stamina
 	maxHealth		= dict.GetInt( "maxhealth", "100" );
 	armor			= dict.GetInt( "armor", "50" );
 	maxarmor		= dict.GetInt( "maxarmor", "100" );
+	stamina			= dict.GetInt("stamina", "25");
+	maxstamina		= dict.GetInt("maxstamina", "50");
 
 	// ammo
 	for( i = 0; i < MAX_AMMOTYPES; i++ ) {
@@ -404,6 +412,8 @@ void idInventory::Save( idSaveGame *savefile ) const {
 	savefile->WriteInt( powerups );
 	savefile->WriteInt( armor );
 	savefile->WriteInt( maxarmor );
+	savefile->WriteInt( stamina );
+	savefile->WriteInt( maxstamina );
 
 	for( i = 0; i < MAX_AMMO; i++ ) {
 		savefile->WriteInt( ammo[ i ] );
@@ -484,6 +494,8 @@ void idInventory::Restore( idRestoreGame *savefile ) {
 	savefile->ReadInt( powerups );
 	savefile->ReadInt( armor );
 	savefile->ReadInt( maxarmor );
+	savefile->ReadInt( stamina );
+	savefile->ReadInt( maxstamina );
 
 	for( i = 0; i < MAX_AMMO; i++ ) {
 		savefile->ReadInt( ammo[ i ] );
@@ -2816,7 +2828,12 @@ void idPlayer::SpawnToPoint( const idVec3 &spawn_origin, const idAngles &spawn_a
 	
 	if ( inventory.armor > inventory.maxarmor ) {
 		nextArmorPulse = gameLocal.time + ARMOR_PULSE;
-	}		
+	}	
+	
+	if (inventory.stamina > inventory.maxstamina) {
+		nextStaminaPulse = gameLocal.time + STAMINA_PULSE;
+	}
+	
 
 	fl.noknockback = false;
 	// stop any ragdolls being used
