@@ -74,6 +74,7 @@ const float MIN_BOB_SPEED		= 5.0f;			// minimum speed to bob and play run/walk a
 const int	MAX_RESPAWN_TIME	= 10000;
 const int	RAGDOLL_DEATH_TIME	= 3000;
 const int	STAMINA_PULSE		= 1000;	
+bool		substamina			= false;
 #ifdef _XENON
 	const int	RAGDOLL_DEATH_TIME_XEN_SP	= 1000;
 	const int	MAX_RESPAWN_TIME_XEN_SP	= 3000;
@@ -209,6 +210,7 @@ void idInventory::Clear( void ) {
 	armor				= 0;
 	maxarmor			= 0;
 	secretAreasDiscovered = 0;
+	substamina = false;
 
 	memset( ammo, 0, sizeof( ammo ) );
 
@@ -345,8 +347,8 @@ void idInventory::RestoreInventory( idPlayer *owner, const idDict &dict ) {
 	maxHealth		= dict.GetInt( "maxhealth", "100" );
 	armor			= dict.GetInt( "armor", "50" );
 	maxarmor		= dict.GetInt( "maxarmor", "100" );
-	stamina			= dict.GetInt("stamina", "25");
-	maxstamina		= dict.GetInt("maxstamina", "50");
+	stamina			= dict.GetInt("stamina", "50");
+	maxstamina		= dict.GetInt("maxstamina", "100");
 
 	// ammo
 	for( i = 0; i < MAX_AMMOTYPES; i++ ) {
@@ -3409,6 +3411,14 @@ void idPlayer::UpdateHudStats( idUserInterface *_hud ) {
 	
 	assert ( _hud );
 
+	temp = _hud->State().GetInt("player_stamina", "-1");
+	if (temp != inventory.stamina) {
+		_hud->SetStateInt("player_staminaDelta", temp == -1 ? 0 : (temp - inventory.stamina));
+		_hud->SetStateInt("player_stamina", inventory.stamina);
+		_hud->SetStateFloat("player_staminapct", idMath::ClampFloat(0.0f, 1.0f, (float)inventory.stamina / (float)inventory.maxstamina));
+		_hud->HandleNamedEvent("updateStamina");
+	}
+
 	temp = _hud->State().GetInt ( "player_health", "-1" );
 	if ( temp != health ) {		
 		_hud->SetStateInt   ( "player_healthDelta", temp == -1 ? 0 : (temp - health) );
@@ -4979,7 +4989,23 @@ void idPlayer::UpdatePowerUps( void ) {
 			inventory.armor--;
 		}		
 	}
-		
+
+	if (gameLocal.time > nextStaminaPulse && substamina && inventory.stamina > 0) {
+		nextStaminaPulse += STAMINA_PULSE;
+		inventory.stamina = inventory.stamina - 5;
+	}
+
+	if (gameLocal.time > nextStaminaPulse && !substamina && inventory.stamina < inventory.maxstamina){
+		nextStaminaPulse += STAMINA_PULSE;
+		inventory.stamina = inventory.stamina + 10;
+	}
+
+	if (inventory.stamina > inventory.maxstamina && gameLocal.time > nextStaminaPulse) {
+		nextStaminaPulse += STAMINA_PULSE;
+		inventory.stamina--;
+	}
+
+
 	// Assign the powerup skin as long as we are alive
  	if ( health > 0 ) {
  		if ( powerUpSkin ) {
@@ -8580,6 +8606,9 @@ void idPlayer::PerformImpulse( int impulse ) {
    			}
    			break;
    		}
+		case IMPULSE_30: {
+			
+		}
 		case IMPULSE_40: {
 			idFuncRadioChatter::RepeatLast();
 			break;
@@ -8762,11 +8791,15 @@ void idPlayer::AdjustSpeed( void ) {
 		speed = pm_noclipspeed.GetFloat();
 		bobFrac = 0.0f;
  	} else if ( !physicsObj.OnLadder() && ( usercmd.buttons & BUTTON_RUN ) && ( usercmd.forwardmove || usercmd.rightmove ) && ( usercmd.upmove >= 0 ) ) {
-		bobFrac = 1.0f;
-		speed = pm_speed.GetFloat();
+		if (inventory.stamina > 4){
+			bobFrac = 1.0f;
+			speed = pm_speed.GetFloat();
+			substamina = true;
+		}
 	} else {
 		speed = pm_walkspeed.GetFloat();
 		bobFrac = 0.0f;
+		substamina = false;
 	}
 
 	speed *= PowerUpModifier(PMOD_SPEED);
