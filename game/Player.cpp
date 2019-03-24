@@ -4992,6 +4992,7 @@ void idPlayer::UpdatePowerUps( void ) {
 
 	if (!gameLocal.isClient && gameLocal.time > nextStaminaPulse){
 		if (substamina && inventory.stamina > 5) {
+			nextStaminaPulse = gameLocal.time;
 			nextStaminaPulse += STAMINA_PULSE;
 			inventory.stamina = inventory.stamina - 5;
 		}
@@ -5000,7 +5001,12 @@ void idPlayer::UpdatePowerUps( void ) {
 	if (gameLocal.time > nextStaminaPulse){
 		if (!substamina && inventory.stamina < inventory.maxstamina){
 			nextStaminaPulse += STAMINA_PULSE;
-			inventory.stamina = inventory.stamina + 10;
+			if (inventory.maxstamina - inventory.stamina > 9){
+				inventory.stamina = inventory.stamina + 10;
+			}
+			else{
+				inventory.stamina += (inventory.maxstamina - inventory.stamina);
+			}
 		}
 	}
 
@@ -8802,6 +8808,7 @@ void idPlayer::AdjustSpeed( void ) {
 		}
 		else {
 			substamina = false;
+			speed = pm_walkspeed.GetFloat();
 		}
 	} else {
 		speed = pm_walkspeed.GetFloat();
