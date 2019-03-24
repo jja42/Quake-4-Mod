@@ -73,7 +73,9 @@ const int	POWERUP_BLINK_TIME	= 1000;			// Time between powerup wear off sounds
 const float MIN_BOB_SPEED		= 5.0f;			// minimum speed to bob and play run/walk animations at
 const int	MAX_RESPAWN_TIME	= 10000;
 const int	RAGDOLL_DEATH_TIME	= 3000;
-const int	STAMINA_PULSE		= 1000;	
+const int	STAMINA_PULSE		= 1000;
+bool		blocking			= false;
+bool		bicycle_mode		= false;
 bool		substamina			= false;
 #ifdef _XENON
 	const int	RAGDOLL_DEATH_TIME_XEN_SP	= 1000;
@@ -4991,7 +4993,7 @@ void idPlayer::UpdatePowerUps( void ) {
 	}
 
 	if (!gameLocal.isClient && gameLocal.time > nextStaminaPulse){
-		if (substamina && inventory.stamina > 5) {
+		if (substamina && inventory.stamina >= 5) {
 			nextStaminaPulse = gameLocal.time;
 			nextStaminaPulse += STAMINA_PULSE;
 			inventory.stamina = inventory.stamina - 5;
@@ -8530,22 +8532,26 @@ void idPlayer::PerformImpulse( int impulse ) {
 
 	switch( impulse ) {
 		case IMPULSE_13: {
-			Reload();
+			ToggleFlashlight();
 			break;
 		}
 		case IMPULSE_14: {
-			NextWeapon();
-			if( gameLocal.isServer && spectating && gameLocal.gameType == GAME_TOURNEY ) {	
-				((rvTourneyGameState*)gameLocal.mpGame.GetGameState())->SpectateCycleNext( this );
+			if (inventory.stamina > 30){
+				inventory.stamina -= 30;
+				idVec3 bounce = viewAxis[0];
+				idAngles ang(0, bounce.ToYaw(), 0);
+				bounce = -600 * ang.ToRight();
+				physicsObj.SetLinearVelocity(physicsObj.GetLinearVelocity() + bounce);
 			}
-			break;
 		}
 		case IMPULSE_15: {
-			PrevWeapon();
-			if( gameLocal.isServer && spectating && gameLocal.gameType == GAME_TOURNEY ) {	
-				((rvTourneyGameState*)gameLocal.mpGame.GetGameState())->SpectateCyclePrev( this );
+			if (inventory.stamina > 30){
+				inventory.stamina -= 30;
+				idVec3 bounce = viewAxis[0];
+				idAngles ang(0, bounce.ToYaw(), 0);
+				bounce = 600 * ang.ToRight();
+				physicsObj.SetLinearVelocity(physicsObj.GetLinearVelocity() + bounce);
 			}
-			break;
 		}
 		case IMPULSE_17: {
  			if ( gameLocal.isClient || entityNumber == gameLocal.localClientNum ) {
@@ -8616,9 +8622,6 @@ void idPlayer::PerformImpulse( int impulse ) {
    			}
    			break;
    		}
-		case IMPULSE_30: {
-			
-		}
 		case IMPULSE_40: {
 			idFuncRadioChatter::RepeatLast();
 			break;
@@ -8657,15 +8660,24 @@ void idPlayer::PerformImpulse( int impulse ) {
 // RITUAL END
 
 		case IMPULSE_50: {
-			ToggleFlashlight ( );
-			break;
+			if (!blocking && inventory.stamina >=50){
+				inventory.stamina -= 50;
+				blocking = true;
+			}
+			else{
+				blocking = false;
+				inventory.armor = 0;
+			}
 		}
 
  		case IMPULSE_51: {
- 			LastWeapon();
- 			break;
- 		}
-	} 
+			if(!bicycle_mode){
+				bicycle_mode = true;
+ 			}
+			else{
+				bicycle_mode = false;
+			}
+		} }
 
 //RAVEN BEGIN
 //asalmon: route d-pad input to the active gui.
@@ -8800,16 +8812,22 @@ void idPlayer::AdjustSpeed( void ) {
 	} else if ( noclip ) {
 		speed = pm_noclipspeed.GetFloat();
 		bobFrac = 0.0f;
- 	} else if ( !physicsObj.OnLadder() && ( usercmd.buttons & BUTTON_RUN ) && ( usercmd.forwardmove || usercmd.rightmove ) && ( usercmd.upmove >= 0 ) ) {
-		if (inventory.stamina > 4){
+ 	} else if (blocking){
+				inventory.armor = 300;
+				speed = 0;
+	}else if (bicycle_mode){
+		if (inventory.stamina >= 5){
 			bobFrac = 1.0f;
 			speed = pm_speed.GetFloat();
 			substamina = true;
 		}
-		else {
-			substamina = false;
-			speed = pm_walkspeed.GetFloat();
+		else{
+			bicycle_mode = false;
 		}
+	 }else if ( !physicsObj.OnLadder() && ( usercmd.buttons & BUTTON_RUN ) && ( usercmd.forwardmove || usercmd.rightmove ) && ( usercmd.upmove >= 0 ) ) {
+			bobFrac = 1.0f;
+			speed = pm_walkspeed.GetFloat();
+			substamina = false;
 	} else {
 		speed = pm_walkspeed.GetFloat();
 		bobFrac = 0.0f;

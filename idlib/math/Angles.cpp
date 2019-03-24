@@ -83,6 +83,21 @@ void idAngles::ToVectors( idVec3 *forward, idVec3 *right, idVec3 *up ) const {
 
 /*
 =================
+idAngles::ToRight
+=================
+*/
+idVec3 idAngles::ToRight(void) const {
+	float sr, sp, sy, cr, cp, cy;
+
+	idMath::SinCos(DEG2RAD(yaw), sy, cy);
+	idMath::SinCos(DEG2RAD(pitch), sp, cp);
+	idMath::SinCos(DEG2RAD(roll), sr, cr);
+	
+	return idVec3 (-sr * sp * cy + cr * sy, -sr * sp * sy + -cr * cy, -sr * cp);
+}
+
+/*
+=================
 idAngles::ToForward
 =================
 */

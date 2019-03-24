@@ -69,6 +69,7 @@ public:
 
 	void			ToVectors( idVec3 *forward, idVec3 *right = NULL, idVec3 *up = NULL ) const;
 	idVec3			ToForward( void ) const;
+	idVec3			ToRight( void ) const;
 	idQuat			ToQuat( void ) const;
 	idRotation		ToRotation( void ) const;
 	idMat3			ToMat3( void ) const;
