@@ -349,7 +349,7 @@ void idInventory::RestoreInventory( idPlayer *owner, const idDict &dict ) {
 	maxHealth		= dict.GetInt( "maxhealth", "100" );
 	armor			= dict.GetInt( "armor", "50" );
 	maxarmor		= dict.GetInt( "maxarmor", "100" );
-	stamina			= dict.GetInt("stamina", "50");
+	stamina			= dict.GetInt("stamina", "100");
 	maxstamina		= dict.GetInt("maxstamina", "100");
 
 	// ammo
@@ -1137,6 +1137,7 @@ idPlayer::idPlayer() {
 	lastDmgTime				= 0;
 	deathClearContentsTime	= 0;
 	nextHealthPulse			= 0;
+	nextStaminaPulse		= 0;
 
 	scoreBoardOpen			= false;
 	forceScoreBoard			= false;
@@ -1514,6 +1515,7 @@ idPlayer::Init
 void idPlayer::Init( void ) {
 	const char			*value;
 	
+	substamina				= false;
 	noclip					= false;
 	godmode					= false;
 	godmodeDamage			= 0;
@@ -2146,6 +2148,7 @@ void idPlayer::Save( idSaveGame *savefile ) const {
  	savefile->WriteBool( doingDeathSkin );
  	savefile->WriteInt( nextHealthPulse );
  	savefile->WriteInt( nextArmorPulse );
+	savefile->WriteInt( nextStaminaPulse );
  	savefile->WriteBool( hiddenWeapon );
 
 //	savefile->WriteInt( spectator );						// Don't save MP stuff
@@ -2419,6 +2422,7 @@ void idPlayer::Restore( idRestoreGame *savefile ) {
  	savefile->ReadBool( doingDeathSkin );
  	savefile->ReadInt( nextHealthPulse );
  	savefile->ReadInt( nextArmorPulse );
+	savefile->ReadInt( nextStaminaPulse );
  	savefile->ReadBool( hiddenWeapon );
 
 	assert( !spectator );								// Don't save MP stuff
@@ -4992,7 +4996,7 @@ void idPlayer::UpdatePowerUps( void ) {
 		}		
 	}
 
-	if (!gameLocal.isClient && gameLocal.time > nextStaminaPulse){
+	if (gameLocal.time > nextStaminaPulse){
 		if (substamina && inventory.stamina >= 5) {
 			nextStaminaPulse = gameLocal.time;
 			nextStaminaPulse += STAMINA_PULSE;
@@ -5001,7 +5005,8 @@ void idPlayer::UpdatePowerUps( void ) {
 	}
 
 	if (gameLocal.time > nextStaminaPulse){
-		if (!substamina && inventory.stamina < inventory.maxstamina){
+		if (!substamina && inventory.stamina < inventory.maxstamina && !blocking){
+			nextStaminaPulse = gameLocal.time;
 			nextStaminaPulse += STAMINA_PULSE;
 			if (inventory.maxstamina - inventory.stamina > 9){
 				inventory.stamina = inventory.stamina + 10;
@@ -8538,19 +8543,21 @@ void idPlayer::PerformImpulse( int impulse ) {
 		case IMPULSE_14: {
 			if (inventory.stamina > 30){
 				inventory.stamina -= 30;
-				idVec3 bounce = viewAxis[0];
-				idAngles ang(0, bounce.ToYaw(), 0);
-				bounce = -600 * ang.ToRight();
-				physicsObj.SetLinearVelocity(physicsObj.GetLinearVelocity() + bounce);
+				idVec3 dodge = viewAxis[0];
+				idAngles ang(0, dodge.ToYaw(), 0);
+				dodge = -600 * ang.ToRight();
+				idVec3 bounce(0, 0, 30);
+				physicsObj.SetLinearVelocity(physicsObj.GetLinearVelocity() + dodge + bounce);
 			}
 		}
 		case IMPULSE_15: {
 			if (inventory.stamina > 30){
 				inventory.stamina -= 30;
-				idVec3 bounce = viewAxis[0];
-				idAngles ang(0, bounce.ToYaw(), 0);
-				bounce = 600 * ang.ToRight();
-				physicsObj.SetLinearVelocity(physicsObj.GetLinearVelocity() + bounce);
+				idVec3 dodge = viewAxis[0];
+				idAngles ang(0, dodge.ToYaw(), 0);
+				dodge = 600 * ang.ToRight();
+				idVec3 bounce(0, 0, 30);
+				physicsObj.SetLinearVelocity(physicsObj.GetLinearVelocity() + dodge + bounce);
 			}
 		}
 		case IMPULSE_17: {
@@ -8660,22 +8667,22 @@ void idPlayer::PerformImpulse( int impulse ) {
 // RITUAL END
 
 		case IMPULSE_50: {
-			if (!blocking && inventory.stamina >=50){
-				inventory.stamina -= 50;
+			if (!blocking){
 				blocking = true;
 			}
 			else{
 				blocking = false;
-				inventory.armor = 0;
 			}
 		}
 
  		case IMPULSE_51: {
 			if(!bicycle_mode){
 				bicycle_mode = true;
+				substamina = true;
  			}
 			else{
 				bicycle_mode = false;
+				substamina = false;
 			}
 		} }
 
@@ -8813,25 +8820,22 @@ void idPlayer::AdjustSpeed( void ) {
 		speed = pm_noclipspeed.GetFloat();
 		bobFrac = 0.0f;
  	} else if (blocking){
-				inventory.armor = 300;
 				speed = 0;
 	}else if (bicycle_mode){
 		if (inventory.stamina >= 5){
-			bobFrac = 1.0f;
+			bobFrac = 3.0f;
 			speed = pm_speed.GetFloat();
-			substamina = true;
 		}
 		else{
 			bicycle_mode = false;
+			substamina = false;
 		}
 	 }else if ( !physicsObj.OnLadder() && ( usercmd.buttons & BUTTON_RUN ) && ( usercmd.forwardmove || usercmd.rightmove ) && ( usercmd.upmove >= 0 ) ) {
 			bobFrac = 1.0f;
 			speed = pm_walkspeed.GetFloat();
-			substamina = false;
 	} else {
 		speed = pm_walkspeed.GetFloat();
 		bobFrac = 0.0f;
-		substamina = false;
 	}
 
 	speed *= PowerUpModifier(PMOD_SPEED);
@@ -10087,6 +10091,16 @@ void idPlayer::CalcDamagePoints( idEntity *inflictor, idEntity *attacker, const 
 			damage = 0;
 		}
 	}
+	
+	if (blocking){
+		if (inventory.stamina >= 10){
+			damage = 0;
+			inventory.stamina -= 10;
+		}
+		else{
+			blocking = false;
+		}
+	}
 
 	// save some from armor
 	if ( !damageDef->GetBool( "noArmor" ) ) {
@@ -10346,6 +10360,12 @@ void idPlayer::Damage( idEntity *inflictor, idEntity *attacker, const idVec3 &di
 
 		int oldHealth = health;
 		health -= damage;
+		if (inventory.stamina >= 10){
+			inventory.stamina -= 10;
+		}
+		else{
+			inventory.stamina = 0;
+		}
 
 		GAMELOG_ADD ( va("player%d_damage_taken", entityNumber ), damage );
 		GAMELOG_ADD ( va("player%d_damage_%s", entityNumber, damageDefName), damage );

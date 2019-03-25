@@ -98,7 +98,7 @@ void rvWeaponGauntlet::Spawn ( void ) {
 	bladeSpinSlow	= spawnArgs.GetAngles ( "blade_spinslow" );
 	bladeAccel		= SEC2MS ( spawnArgs.GetFloat ( "blade_accel", ".25" ) );
 	
-	range			= spawnArgs.GetFloat ( "range", "32" );
+	range			= spawnArgs.GetFloat ( "range", "100" );
 
 	impactMaterial = -1;
 	impactEffect   = NULL;
@@ -205,100 +205,98 @@ void rvWeaponGauntlet::CleanupWeapon( void ) {
 rvWeaponGauntlet::Attack
 ================
 */
-void rvWeaponGauntlet::Attack ( void ) {
+void rvWeaponGauntlet::Attack(void) {
 	trace_t		tr;
 	idEntity*	ent;
-	
-	// Cast a ray out to the lock range
-// RAVEN BEGIN
-// ddynerman: multiple clip worlds
-	gameLocal.TracePoint(	owner, tr, 
-							playerViewOrigin, 
-							playerViewOrigin + playerViewAxis[0] * range, 
-							MASK_SHOT_RENDERMODEL, owner );
-// RAVEN END
-	owner->WeaponFireFeedback( &weaponDef->dict );
 
-	if ( tr.fraction >= 1.0f ) {
-		if ( impactEffect ) {
-			impactEffect->Stop ( );
+	// Cast a ray out to the lock range
+	// RAVEN BEGIN
+	// ddynerman: multiple clip worlds
+	gameLocal.TracePoint(owner, tr,
+		playerViewOrigin,
+		playerViewOrigin + playerViewAxis[0] * range,
+		MASK_SHOT_RENDERMODEL, owner);
+	// RAVEN END
+	owner->WeaponFireFeedback(&weaponDef->dict);
+
+	if (tr.fraction >= 1.0f) {
+		if (impactEffect) {
+			impactEffect->Stop();
 			impactEffect = NULL;
 		}
 		impactMaterial = -1;
-		PlayLoopSound( LOOP_NONE );
- 		return;
+		return;
 	}
-		
+
 	// Entity we hit?
 	ent = gameLocal.entities[tr.c.entityNum];
 
 	// If the impact material changed then stop the impact effect 
-	if ( (tr.c.materialType && tr.c.materialType->Index ( ) != impactMaterial) ||
-		 (!tr.c.materialType && impactMaterial != -1) ) {
-		if ( impactEffect ) {
-			impactEffect->Stop ( );
+	if ((tr.c.materialType && tr.c.materialType->Index() != impactMaterial) ||
+		(!tr.c.materialType && impactMaterial != -1)) {
+		if (impactEffect) {
+			impactEffect->Stop();
 			impactEffect = NULL;
 		}
 		impactMaterial = -1;
 	}
-	
+
 	// In singleplayer-- the gauntlet never effects marine AI
-	if( !gameLocal.isMultiplayer ) {
+	if (!gameLocal.isMultiplayer) {
 		idActor* actor_ent = 0;
-		
+
 		//ignore both the body and the head.
-		if (ent->IsType( idActor::GetClassType()) )	{
+		if (ent->IsType(idActor::GetClassType()))	{
 			actor_ent = static_cast<idActor*>(ent);
-		} else if (ent->IsType ( idAFAttachment::GetClassType()) )	{
+		}
+		else if (ent->IsType(idAFAttachment::GetClassType()))	{
 			actor_ent = static_cast<idActor*>(ent->GetBindMaster());
 		}
-			
-		if ( actor_ent && actor_ent->team == gameLocal.GetLocalPlayer()->team )	{
-			PlayLoopSound( LOOP_NONE );
+
+		if (actor_ent && actor_ent->team == gameLocal.GetLocalPlayer()->team)	{
+			PlayLoopSound(LOOP_NONE);
 			return;
 		}
 	}
 
 	//multiplayer-- don't gauntlet dead stuff
-	if( gameLocal.isMultiplayer )	{
+	if (gameLocal.isMultiplayer)	{
 		idPlayer * player;
-		if ( ent->IsType( idPlayer::GetClassType() )) {
-			player = static_cast< idPlayer* >(ent);
+		if (ent->IsType(idPlayer::GetClassType())) {
+			player = static_cast<idPlayer*>(ent);
 			if (player->health <= 0)	{
 				return;
 			}
 		}
 
 	}
-	
-	if ( !impactEffect ) {
+
+	if (!impactEffect) {
 		impactMaterial = tr.c.materialType ? tr.c.materialType->Index() : -1;
-		impactEffect = gameLocal.PlayEffect ( gameLocal.GetEffect ( spawnArgs, "fx_impact", tr.c.materialType ), tr.endpos, tr.c.normal.ToMat3(), true );
-	} else {
-		impactEffect->SetOrigin ( tr.endpos );
-		impactEffect->SetAxis ( tr.c.normal.ToMat3() );
+		impactEffect = gameLocal.PlayEffect(gameLocal.GetEffect(spawnArgs, "fx_impact", tr.c.materialType), tr.endpos, tr.c.normal.ToMat3(), true);
 	}
-	
+	else {
+		impactEffect->SetOrigin(tr.endpos);
+		impactEffect->SetAxis(tr.c.normal.ToMat3());
+	}
+
 	// Do damage?
-	if ( gameLocal.time > nextAttackTime ) {					
-		if ( ent ) {
-			if ( ent->fl.takedamage ) {
+	if (gameLocal.time > nextAttackTime) {
+		nextAttackTime = gameLocal.time + 100;
+		if (ent) {
+			if (ent->fl.takedamage) {
 				float dmgScale = 1.0f;
-				dmgScale *= owner->PowerUpModifier( PMOD_MELEE_DAMAGE );
-				ent->Damage ( owner, owner, playerViewAxis[0], spawnArgs.GetString ( "def_damage" ), dmgScale, 0 );
-				StartSound( "snd_hit", SND_CHANNEL_ANY, 0, false, NULL );
-				if ( ent->spawnArgs.GetBool( "bleed" ) ) {
-					PlayLoopSound( LOOP_FLESH );
-				} else {
-					PlayLoopSound( LOOP_WALL );
+				dmgScale *= owner->PowerUpModifier(PMOD_MELEE_DAMAGE);
+				ent->Damage(owner, owner, playerViewAxis[0], spawnArgs.GetString("def_damage"), dmgScale, 0);
+				StartSound("snd_hit", SND_CHANNEL_ANY, 0, false, NULL);
+				if (ent->spawnArgs.GetBool("bleed")) {
+					PlayLoopSound(LOOP_FLESH);
 				}
-			} else {
-				PlayLoopSound( LOOP_WALL );
+				else {
+					PlayLoopSound(LOOP_NONE);
+				}
 			}
-		} else {
-			PlayLoopSound( LOOP_NONE );
 		}
-		nextAttackTime = gameLocal.time + fireRate;
 	}
 }
 
@@ -308,17 +306,6 @@ rvWeaponGauntlet::StartBlade
 ================
 */
 void rvWeaponGauntlet::StartBlade ( void ) {
-	if ( viewModel ) {
-		viewModel->GetAnimator()->SetJointAngularVelocity ( bladeJoint, bladeSpinFast, gameLocal.time, bladeAccel ); 
-	}
-	
-	if ( GetWorldModel() ) {	
-		GetWorldModel()->GetAnimator()->SetJointAngularVelocity ( bladeJoint_world, bladeSpinFast, gameLocal.time, bladeAccel ); 
-	}
-	
-	StopSound ( SND_CHANNEL_ITEM, false );
-//	StartSound ( "snd_blade_fast", SND_CHANNEL_ITEM, 0, false, NULL );
-	StartSound( "snd_spin_up", SND_CHANNEL_ITEM, 0, false, 0 );
 }
 
 /*
@@ -327,17 +314,6 @@ rvWeaponGauntlet::StopBlade
 ================
 */
 void rvWeaponGauntlet::StopBlade ( void ) {
-	if ( viewModel ) {
-		viewModel->GetAnimator()->SetJointAngularVelocity ( bladeJoint, bladeSpinSlow, gameLocal.time, bladeAccel ); 
-	}
-	
-	if ( GetWorldModel() ) {
-		GetWorldModel()->GetAnimator()->SetJointAngularVelocity ( bladeJoint_world, bladeSpinSlow, gameLocal.time, bladeAccel ); 
-	}
-	
-	StopSound ( SND_CHANNEL_WEAPON, false );
-//	StartSound ( "snd_blade_slow", SND_CHANNEL_ITEM, 0, false, NULL );
-	
 	if ( impactEffect ) {
 		impactEffect->Stop ( );
 		impactEffect = NULL;
@@ -373,7 +349,7 @@ stateResult_t rvWeaponGauntlet::State_Raise( const stateParms_t& parms ) {
 	switch ( parms.stage ) {
 		case RAISE_INIT:			
 			SetStatus ( WP_RISING );
-			PlayAnim( ANIMCHANNEL_ALL, "raise", parms.blendFrames );
+			PlayAnim( ANIMCHANNEL_ALL, "raise", 0 );
 			return SRESULT_STAGE(RAISE_WAIT);
 			
 		case RAISE_WAIT:
@@ -404,7 +380,7 @@ stateResult_t rvWeaponGauntlet::State_Lower ( const stateParms_t& parms ) {
 	switch ( parms.stage ) {
 		case LOWER_INIT:
 			SetStatus ( WP_LOWERING );
-			PlayAnim( ANIMCHANNEL_ALL, "lower", parms.blendFrames );
+			PlayAnim( ANIMCHANNEL_ALL, "lower", 0 );
 			return SRESULT_STAGE(LOWER_WAIT);
 			
 		case LOWER_WAIT:
@@ -415,7 +391,7 @@ stateResult_t rvWeaponGauntlet::State_Lower ( const stateParms_t& parms ) {
 			return SRESULT_WAIT;
 	
 		case LOWER_WAITRAISE:
-			if ( wsfl.raiseWeapon ) {
+			if (wsfl.raiseWeapon && gameLocal.time > nextAttackTime) {
 				SetState ( "Raise", 0 );
 				return SRESULT_DONE;
 			}
@@ -446,7 +422,7 @@ stateResult_t rvWeaponGauntlet::State_Idle ( const stateParms_t& parms ) {
 				SetState ( "Lower", 4 );
 				return SRESULT_DONE;
 			}
-			if ( wsfl.attack ) {
+			if (wsfl.attack) {
 				SetState ( "Fire", 2 );
 				return SRESULT_DONE;
 			}
@@ -473,7 +449,6 @@ stateResult_t rvWeaponGauntlet::State_Fire ( const stateParms_t& parms ) {
 		case STAGE_START:	
 			PlayAnim ( ANIMCHANNEL_ALL, "attack_start", parms.blendFrames );
 			StartBlade ( );
-			loopSound = LOOP_NONE;
 			return SRESULT_STAGE(STAGE_START_WAIT);
 		
 		case STAGE_START_WAIT:
@@ -481,31 +456,25 @@ stateResult_t rvWeaponGauntlet::State_Fire ( const stateParms_t& parms ) {
 				return SRESULT_STAGE ( STAGE_END );
 			}
 			if ( AnimDone ( ANIMCHANNEL_ALL, parms.blendFrames ) ) {
-				return SRESULT_STAGE ( STAGE_LOOP );
+				return SRESULT_STAGE ( STAGE_LOOP_WAIT );
 			}
 			return SRESULT_WAIT;
-			
-		case STAGE_LOOP:
-			PlayCycle ( ANIMCHANNEL_ALL, "attack_loop", parms.blendFrames );
-			StartSound( "snd_spin_loop", SND_CHANNEL_WEAPON, 0, false, 0 );
-			return SRESULT_STAGE(STAGE_LOOP_WAIT);
 			
 		case STAGE_LOOP_WAIT:
 			if ( !wsfl.attack || wsfl.lowerWeapon ) {
 				return SRESULT_STAGE ( STAGE_END );
 			}
 			Attack ( );
-			return SRESULT_WAIT;
+			return SRESULT_STAGE(STAGE_END);
 		
 		case STAGE_END:
 			PlayAnim ( ANIMCHANNEL_ALL, "attack_end", parms.blendFrames );
 			StopBlade ( );
-			StartSound( "snd_spin_down", SND_CHANNEL_WEAPON, 0, false, 0 );
 			return SRESULT_STAGE ( STAGE_END_WAIT );
 		
 		case STAGE_END_WAIT:
 			if ( wsfl.attack || AnimDone ( ANIMCHANNEL_ALL, parms.blendFrames ) ) {
-				PostState ( "Idle", parms.blendFrames );
+				PostState ( "Lower", parms.blendFrames);
 				return SRESULT_DONE;
 			}
 			return SRESULT_WAIT;
