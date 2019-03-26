@@ -31,6 +31,7 @@ protected:
 	
 	rvClientEffectPtr	impactEffect;
 	int					impactMaterial;
+	int					punch_pause;
 
 	void				Attack				( void );
 	void				StartBlade			( void );
@@ -208,7 +209,7 @@ rvWeaponGauntlet::Attack
 void rvWeaponGauntlet::Attack(void) {
 	trace_t		tr;
 	idEntity*	ent;
-
+	punch_pause = gameLocal.time + 1500;
 	// Cast a ray out to the lock range
 	// RAVEN BEGIN
 	// ddynerman: multiple clip worlds
@@ -257,6 +258,7 @@ void rvWeaponGauntlet::Attack(void) {
 			PlayLoopSound(LOOP_NONE);
 			return;
 		}
+		actor_ent->hitstun = gameLocal.time + 3000;
 	}
 
 	//multiplayer-- don't gauntlet dead stuff
@@ -286,7 +288,12 @@ void rvWeaponGauntlet::Attack(void) {
 		if (ent) {
 			if (ent->fl.takedamage) {
 				float dmgScale = 1.0f;
-				dmgScale *= owner->PowerUpModifier(PMOD_MELEE_DAMAGE);
+				if (ent->IsType(idActor::GetClassType()))	{
+					idActor* actor_ent;
+					actor_ent = static_cast<idActor*>(ent);
+					idActor actor = *actor_ent;
+					dmgScale = actor.GetDamageForLocation(20, 0) / 20;
+				}
 				ent->Damage(owner, owner, playerViewAxis[0], spawnArgs.GetString("def_damage"), dmgScale, 0);
 				StartSound("snd_hit", SND_CHANNEL_ANY, 0, false, NULL);
 				if (ent->spawnArgs.GetBool("bleed")) {
@@ -473,9 +480,11 @@ stateResult_t rvWeaponGauntlet::State_Fire ( const stateParms_t& parms ) {
 			return SRESULT_STAGE ( STAGE_END_WAIT );
 		
 		case STAGE_END_WAIT:
-			if ( wsfl.attack || AnimDone ( ANIMCHANNEL_ALL, parms.blendFrames ) ) {
-				PostState ( "Lower", parms.blendFrames);
-				return SRESULT_DONE;
+			if (wsfl.attack || AnimDone(ANIMCHANNEL_ALL, parms.blendFrames)) {
+				if (gameLocal.time > punch_pause){
+					PostState("Lower", parms.blendFrames);
+					return SRESULT_DONE;
+				}
 			}
 			return SRESULT_WAIT;
 	}			

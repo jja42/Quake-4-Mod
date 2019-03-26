@@ -5,7 +5,7 @@ AI.cpp
 
 ================
 */
-
+#include <stdlib.h>
 #include "../../idlib/precompiled.h"
 #pragma hdrstop
 
@@ -139,6 +139,9 @@ idAI::idAI ( void ) {
 	actionAnimNum	= 0;
 	actionSkipTime	= 0;
 	actionTime		= 0;
+	if (hitstun > gameLocal.time){
+		physicsObj.SetLinearVelocity(vec3_zero);
+	}
 }
 
 /*
@@ -816,7 +819,6 @@ void idAI::Spawn( void ) {
 	// Initialize actions	
 	actionEvadeLeft.Init		( spawnArgs, "action_evadeLeft",		NULL,					0 );
 	actionEvadeRight.Init		( spawnArgs, "action_evadeRight",		NULL, 					0 );
-	actionRangedAttack.Init		( spawnArgs, "action_rangedAttack",		NULL, 					AIACTIONF_ATTACK );
 	actionMeleeAttack.Init		( spawnArgs, "action_meleeAttack",		NULL, 					AIACTIONF_ATTACK|AIACTIONF_MELEE );
 	actionLeapAttack.Init		( spawnArgs, "action_leapAttack",		NULL, 					AIACTIONF_ATTACK );
 	actionJumpBack.Init			( spawnArgs, "action_jumpBack",			NULL, 					0 );
@@ -833,7 +835,6 @@ void idAI::Spawn( void ) {
 	combat.tacticalMaskUpdate = 0;
 	combat.tacticalMaskAvailable  = AITACTICAL_TURRET_BIT|AITACTICAL_MOVE_FOLLOW_BIT|AITACTICAL_MOVE_TETHER_BIT;
 	combat.tacticalMaskAvailable |= (spawnArgs.GetBool ( "tactical_cover",   "0" )		? AITACTICAL_COVER_BITS				: 0);
-	combat.tacticalMaskAvailable |= (spawnArgs.GetBool ( "tactical_ranged",  "0" ) 		? AITACTICAL_RANGED_BITS			: 0);
 	combat.tacticalMaskAvailable |= (spawnArgs.GetBool ( "tactical_hide",    "0" ) 		? AITACTICAL_HIDE_BIT				: 0);	
 	combat.tacticalMaskAvailable |= (spawnArgs.GetBool ( "tactical_rush",    "0" ) 		? AITACTICAL_MELEE_BIT				: 0);
 	combat.tacticalMaskAvailable |= (spawnArgs.GetBool ( "tactical_passive", "0" ) 		? AITACTICAL_PASSIVE_BIT			: 0);
@@ -2465,21 +2466,23 @@ void idAI::RemoveProjectile( void ) {
 idAI::Attack
 =====================
 */
-bool idAI::Attack ( const char* attackName, jointHandle_t joint, idEntity* target, const idVec3& pushVelocity ) {
-	// Get the attack dictionary
-	const idDict* attackDict;
-	attackDict = gameLocal.FindEntityDefDict ( spawnArgs.GetString ( va("def_attack_%s", attackName ) ), false );
-	if ( !attackDict ) {
-		gameLocal.Error ( "could not find attack entityDef 'def_attack_%s (%s)' on AI entity %s", attackName, spawnArgs.GetString ( va("def_attack_%s", attackName ) ), GetName ( ) );
-	}
+bool idAI::Attack(const char* attackName, jointHandle_t joint, idEntity* target, const idVec3& pushVelocity) {
+	if (hitstun < gameLocal.time){
+		// Get the attack dictionary
+		const idDict* attackDict;
+		attackDict = gameLocal.FindEntityDefDict(spawnArgs.GetString(va("def_attack_%s", attackName)), false);
+		if (!attackDict) {
+			gameLocal.Error("could not find attack entityDef 'def_attack_%s (%s)' on AI entity %s", attackName, spawnArgs.GetString(va("def_attack_%s", attackName)), GetName());
+		}
 
-	// Melee Attack?
-	if ( spawnArgs.GetBool ( va("attack_%s_melee", attackName ), "0" ) ) {
-		return AttackMelee ( attackName, attackDict );
-	}
+		// Melee Attack?
+		if (spawnArgs.GetBool(va("attack_%s_melee", attackName), "0")) {
+			return AttackMelee(attackName, attackDict);
+		}
 
-	// Ranged attack (hitscan or projectile)?
-	return ( AttackRanged ( attackName, attackDict, joint, target, pushVelocity ) != NULL );
+		// Ranged attack (hitscan or projectile)?
+		return (AttackRanged(attackName, attackDict, joint, target, pushVelocity) != NULL);
+	}
 }
 
 /*

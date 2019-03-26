@@ -327,7 +327,6 @@ const idEventDef AI_NextEnemy( "nextEnemy", "E", 'e' );
 const idEventDef AI_ClosestEnemyToPoint( "closestEnemyToPoint", "v", 'e' );
 const idEventDef AI_GetHead( "getHead", NULL, 'e' );
 
-
 // RAVEN BEGIN
 // bdube: added
 const idEventDef AI_Flashlight("flashlight", "d" );
@@ -518,6 +517,7 @@ void idActor::Spawn( void ) {
 	idStr			jointName;
 	float			fovDegrees;
 	float			fovDegreesClose;
+	int				hitstun;
 
 	animPrefix	= "";
 

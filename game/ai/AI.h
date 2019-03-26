@@ -562,6 +562,7 @@ public:
 		bool		scriptedNeverDormant	:1;			// Prevent going dormant while in scripted sequence
 		bool		scripted				:1;
 		bool		simpleThink				:1;
+		bool		stunned					:1;
 		bool		ignoreFlashlight		:1;
 		bool		action					:1;
 		bool		lookAtPlayer			:1;

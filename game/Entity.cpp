@@ -3630,12 +3630,11 @@ inflictor, attacker, dir, and point can be NULL for environmental effects
 ============
 */
 void idEntity::Damage( idEntity *inflictor, idEntity *attacker, const idVec3 &dir, 
-					  const char *damageDefName, const float damageScale, const int location ) {
+					  const char *damageDefName, float damageScale, const int location ) {
 	if ( forwardDamageEnt.IsValid() ) {
 		forwardDamageEnt->Damage( inflictor, attacker, dir, damageDefName, damageScale, location );
 		return;
 	}
-
 	if ( !fl.takedamage ) {
 		return;
 	}
@@ -3660,7 +3659,7 @@ void idEntity::Damage( idEntity *inflictor, idEntity *attacker, const idVec3 &di
 	if ( damage ) {
 		// do the damage
 		//jshepard: this is kinda important, no?
-		health -= damage;
+		health -= damage*damageScale;
 
 		if ( health <= 0 ) {
 			if ( health < -999 ) {
