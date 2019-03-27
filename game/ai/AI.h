@@ -539,6 +539,10 @@ public:
 	float					headFocusRate;
 	float					eyeFocusRate;
 	
+	//hitstun and block
+	int hitstun;
+	int blocktime;
+
 	// joint controllers
 	idAngles				eyeMin;
 	idAngles				eyeMax;
@@ -562,7 +566,6 @@ public:
 		bool		scriptedNeverDormant	:1;			// Prevent going dormant while in scripted sequence
 		bool		scripted				:1;
 		bool		simpleThink				:1;
-		bool		stunned					:1;
 		bool		ignoreFlashlight		:1;
 		bool		action					:1;
 		bool		lookAtPlayer			:1;
@@ -1320,7 +1323,10 @@ ID_INLINE idEntity* idAI::GetGoalEntity ( void ) const {
 	return move.goalEntity;
 }
 
-ID_INLINE bool idAI::CanTakeDamage( void ) const {
+ID_INLINE bool idAI::CanTakeDamage(void) const {
+	if (blocktime > gameLocal.time) {
+		return false;
+}
 	return idActor::CanTakeDamage( );
 }
 

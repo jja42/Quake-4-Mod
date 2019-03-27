@@ -257,6 +257,7 @@ public:
 
 	int						HasAmmo( int index, int amount );
 	bool					UseAmmo( int index, int amount );
+	bool					supercharged;
 	int						HasAmmo( const char *weapon_classname );			// looks up the ammo information for the weapon class first
 
 	int						nextItemPickup;

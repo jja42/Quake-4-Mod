@@ -169,7 +169,13 @@ void rvMonsterStroggMarine::OnStopMoving ( aiMoveCommand_t oldMoveCommand ) {
 		if ( combat.tacticalCurrent == AITACTICAL_HIDE )
 		{
 		}
-		else if ( combat.tacticalCurrent == AITACTICAL_MELEE )
+		else if (this->health < spawnArgs.GetInt("health" "80") * .50) {
+			int a = gameLocal.random.RandomInt(9);
+			if (a = 1) {
+				 this->blocktime = gameLocal.time + 3000;
+			}
+		}
+		else if ( combat.tacticalCurrent == AITACTICAL_MELEE && hitstun < gameLocal.time )
 		{
 			actionMeleeAttack.timer.Clear( actionTime );
 		}
@@ -191,6 +197,22 @@ rvMonsterStroggMarine::CheckAction_JumpBack
 */
 bool rvMonsterStroggMarine::CheckAction_JumpBack ( rvAIAction* action, int animNum ) {
 	// Jump back after taking damage
+	if (hitstun > gameLocal.time){
+		return false;
+	}
+	
+	if (this->health < spawnArgs.GetInt("health" "80") * .75) {
+		int a = gameLocal.random.RandomInt(9);
+		if (a = 8) {
+			idVec3 dodge = viewAxis[0];
+			idAngles ang(0, dodge.ToYaw(), 0);
+			dodge = -600 * ang.ToForward();
+			idVec3 bounce(0, 0, 30);
+			physicsObj.SetLinearVelocity(physicsObj.GetLinearVelocity() + dodge + bounce);
+			return false;
+		}
+	}
+
 	if ( !aifl.damage && gameLocal.time - pain.lastTakenTime > 1500 ) {
 		return false;
 	}
@@ -213,14 +235,23 @@ rvMonsterStroggMarine::CheckAction_EvadeLeft
 ================
 */
 bool rvMonsterStroggMarine::CheckAction_EvadeLeft ( rvAIAction* action, int animNum ) {
-	if ( gameLocal.time - pain.lastTakenTime > 1500 ) {
-		if( combat.shotAtAngle >= 0 || gameLocal.time - combat.shotAtTime > 100 ) {
-			return false;
-		}
-	}
 	// TODO: dont evade unless it was coming from directly in front of us
 	if ( !TestAnimMove ( animNum ) ) {
 		return false;
+	}
+	if (hitstun > gameLocal.time){
+		return false;
+	}
+	if (this->health < spawnArgs.GetInt("health" "80") * .75) {
+		int a = gameLocal.random.RandomInt(9);
+		if (a = 8) {
+			idVec3 dodge = viewAxis[0];
+			idAngles ang(0, dodge.ToYaw(), 0);
+			dodge = -600 * ang.ToRight();
+			idVec3 bounce(0, 0, 30);
+			physicsObj.SetLinearVelocity(physicsObj.GetLinearVelocity() + dodge + bounce);
+			return false;
+		}
 	}
 	return true;
 }
@@ -231,11 +262,21 @@ rvMonsterStroggMarine::CheckAction_EvadeRight
 ================
 */
 bool rvMonsterStroggMarine::CheckAction_EvadeRight ( rvAIAction* action, int animNum ) {
-	if ( gameLocal.time - pain.lastTakenTime > 1500 ) {
-		if( combat.shotAtAngle < 0 || gameLocal.time - combat.shotAtTime > 100 ){
-			return false;
-		}
+	if (hitstun > gameLocal.time){
+		return false;
 	}
+	if (this->health < spawnArgs.GetInt("health" "80") * .75) {
+			int a = gameLocal.random.RandomInt(9);
+			if (a = 8) {
+				idVec3 dodge = viewAxis[0];
+				idAngles ang(0, dodge.ToYaw(), 0);
+				dodge = 600 * ang.ToRight();
+				idVec3 bounce(0, 0, 30);
+				physicsObj.SetLinearVelocity(physicsObj.GetLinearVelocity() + dodge + bounce);
+				return false;
+			}
+		}
+
 	// TODO: Dont eveade unless it was coming from directly in front of us
 	if ( !TestAnimMove ( animNum ) ) {
 		return false;
@@ -268,6 +309,9 @@ bool rvMonsterStroggMarine::CheckAction_Strafe ( rvAIAction* action, int animNum
 		}
 		return false;
 	}
+	if (hitstun > gameLocal.time){
+		return false;
+	}
 	return true;
 }
 
@@ -289,6 +333,9 @@ bool rvMonsterStroggMarine::CheckAction_RangedAttack ( rvAIAction* action, int a
 	if ( spawnArgs.GetBool( "rangeAttackChance" )
 		&& enemy.range-action->minRange < gameLocal.random.RandomFloat()*(action->maxRange-action->minRange) ) {
 		//the closer you are, the more likely you are to not attack
+		return false;
+	}
+	if (hitstun > gameLocal.time){
 		return false;
 	}
 	return idAI::CheckAction_RangedAttack( action, animNum );
@@ -320,6 +367,9 @@ bool rvMonsterStroggMarine::CheckAction_CrouchRangedAttack ( rvAIAction* action,
 	if ( animNum != -1 && !CanHitEnemyFromAnim( animNum ) ) {
 		return false;
 	}
+	if (hitstun > gameLocal.time){
+		return false;
+	}
 	return true;
 }
 
@@ -334,6 +384,9 @@ bool rvMonsterStroggMarine::CheckAction_RollAttack ( rvAIAction* action, int ani
 		return false;
 	}
 	if ( !TestAnimMove ( animNum ) ) {
+		return false;
+	}
+	if (hitstun > gameLocal.time){
 		return false;
 	}
 	return true;
@@ -354,6 +407,9 @@ bool rvMonsterStroggMarine::CheckAction_SprayAttack ( rvAIAction* action, int an
 	}
 	if ( GetEnemy()->GetPhysics()->GetLinearVelocity().Compare( vec3_origin ) )
 	{//not moving
+		return false;
+	}
+	if (hitstun > gameLocal.time){
 		return false;
 	}
 	return true;

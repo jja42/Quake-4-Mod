@@ -366,7 +366,7 @@ public:
 	idTestModel *			testmodel;				// for development testing of models
 // RAVEN BEGIN
 // bdube: not using id effects
-//	idEntityFx *			testFx;					// for development testing of fx
+//	idEntityFx *			testFx;					// for development testing of fxf
 // RAVEN END
 
 	// only set when an end level is activated, which will take over camera positioning

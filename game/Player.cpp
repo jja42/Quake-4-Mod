@@ -213,7 +213,7 @@ void idInventory::Clear( void ) {
 	maxarmor			= 0;
 	secretAreasDiscovered = 0;
 	substamina = false;
-
+	supercharged = false;
 	memset( ammo, 0, sizeof( ammo ) );
 
 	ClearPowerUps();
@@ -4997,7 +4997,7 @@ void idPlayer::UpdatePowerUps( void ) {
 	}
 
 	if (gameLocal.time > nextStaminaPulse){
-		if (substamina && inventory.stamina >= 5) {
+		if (substamina && inventory.stamina >= 5 && (usercmd.forwardmove || usercmd.rightmove)) {
 			nextStaminaPulse = gameLocal.time;
 			nextStaminaPulse += STAMINA_PULSE;
 			inventory.stamina = inventory.stamina - 5;
@@ -8546,7 +8546,7 @@ void idPlayer::PerformImpulse( int impulse ) {
 				idVec3 dodge = viewAxis[0];
 				idAngles ang(0, dodge.ToYaw(), 0);
 				dodge = -600 * ang.ToRight();
-				idVec3 bounce(0, 0, 30);
+				idVec3 bounce(0, 0, 50);
 				physicsObj.SetLinearVelocity(physicsObj.GetLinearVelocity() + dodge + bounce);
 			}
 		}
@@ -8556,7 +8556,7 @@ void idPlayer::PerformImpulse( int impulse ) {
 				idVec3 dodge = viewAxis[0];
 				idAngles ang(0, dodge.ToYaw(), 0);
 				dodge = 600 * ang.ToRight();
-				idVec3 bounce(0, 0, 30);
+				idVec3 bounce(0, 0, 50);
 				physicsObj.SetLinearVelocity(physicsObj.GetLinearVelocity() + dodge + bounce);
 			}
 		}
@@ -8571,18 +8571,10 @@ void idPlayer::PerformImpulse( int impulse ) {
 			break;
 		}
 		case IMPULSE_19: {
-/*		
-			// when we're not in single player, IMPULSE_19 is used for showScores
-			// otherwise it does IMPULSE_12 (PDA)
-			if ( !gameLocal.isMultiplayer ) {
-				if ( !objectiveSystemOpen ) {
-					if ( weapon ) {
-						weapon->Hide ();
-					}
-				}
-				ToggleMap();
-			}
-*/
+			if (inventory.stamina = 100 && !inventory.supercharged){
+				inventory.stamina = 0;
+				inventory.supercharged = true;
+							 }
 			break;
 		}
 		case IMPULSE_20: {
@@ -8669,9 +8661,11 @@ void idPlayer::PerformImpulse( int impulse ) {
 		case IMPULSE_50: {
 			if (!blocking){
 				blocking = true;
+				break;
 			}
 			else{
 				blocking = false;
+				break;
 			}
 		}
 
@@ -8679,10 +8673,12 @@ void idPlayer::PerformImpulse( int impulse ) {
 			if(!bicycle_mode){
 				bicycle_mode = true;
 				substamina = true;
+				break;
  			}
 			else{
 				bicycle_mode = false;
 				substamina = false;
+				break;
 			}
 		} }
 

@@ -517,7 +517,6 @@ void idActor::Spawn( void ) {
 	idStr			jointName;
 	float			fovDegrees;
 	float			fovDegreesClose;
-	int				hitstun;
 
 	animPrefix	= "";
 
