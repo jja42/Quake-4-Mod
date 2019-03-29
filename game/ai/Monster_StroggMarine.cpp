@@ -101,7 +101,10 @@ void rvMonsterStroggMarine::Spawn ( void ) {
 	actionSprayAttack.Init  ( spawnArgs, "action_sprayAttack",	"Torso_SprayAttack", AIACTIONF_ATTACK );
 	actionAngry.Init  ( spawnArgs, "action_angry",	NULL, 0 );
 	actionReload.Init  ( spawnArgs, "action_reload",	NULL, 0 );
-
+	this->hitstun = 0;
+	this->blocktime = 0;
+	this->dodgetime = 0;
+	this->blocking = false;
 	InitSpawnArgsVariables();
 
 	shots	 = 0;
@@ -120,14 +123,15 @@ void rvMonsterStroggMarine::Save ( idSaveGame *savefile ) const {
 	actionSprayAttack.Save( savefile );
 	actionAngry.Save( savefile );
 	actionReload.Save( savefile );
-
+	savefile->WriteBool(blocking);
+	savefile->WriteInt(blocktime);
+	savefile->WriteInt(hitstun);
+	savefile->WriteInt(dodgetime);
 	savefile->WriteInt ( shots );
 	savefile->WriteInt ( shotsFired );
-
 	savefile->WriteInt ( fireAnimNum );
 	savefile->WriteBool ( spraySideRight );
 	savefile->WriteInt ( sweepCount );
-
 	savefile->WriteInt ( nextShootTime );
 }
 
@@ -143,14 +147,15 @@ void rvMonsterStroggMarine::Restore ( idRestoreGame *savefile ) {
 	actionSprayAttack.Restore( savefile );
 	actionAngry.Restore( savefile );
 	actionReload.Restore( savefile );
-	
+	savefile->ReadBool(blocking);
+	savefile->ReadInt(blocktime);
+	savefile->ReadInt(hitstun);
+	savefile->ReadInt(dodgetime);
 	savefile->ReadInt ( shots );
 	savefile->ReadInt ( shotsFired ); 
-	
 	savefile->ReadInt ( fireAnimNum );
 	savefile->ReadBool ( spraySideRight );
 	savefile->ReadInt ( sweepCount );
-
 	savefile->ReadInt ( nextShootTime );
 
 	InitSpawnArgsVariables();
@@ -169,13 +174,7 @@ void rvMonsterStroggMarine::OnStopMoving ( aiMoveCommand_t oldMoveCommand ) {
 		if ( combat.tacticalCurrent == AITACTICAL_HIDE )
 		{
 		}
-		else if (this->health < spawnArgs.GetInt("health" "80") * .50) {
-			int a = gameLocal.random.RandomInt(9);
-			if (a = 1) {
-				 this->blocktime = gameLocal.time + 3000;
-			}
-		}
-		else if ( combat.tacticalCurrent == AITACTICAL_MELEE && hitstun < gameLocal.time )
+		else if ( combat.tacticalCurrent == AITACTICAL_MELEE)
 		{
 			actionMeleeAttack.timer.Clear( actionTime );
 		}
@@ -197,25 +196,6 @@ rvMonsterStroggMarine::CheckAction_JumpBack
 */
 bool rvMonsterStroggMarine::CheckAction_JumpBack ( rvAIAction* action, int animNum ) {
 	// Jump back after taking damage
-	if (hitstun > gameLocal.time){
-		return false;
-	}
-	
-	if (this->health < spawnArgs.GetInt("health" "80") * .75) {
-		int a = gameLocal.random.RandomInt(9);
-		if (a = 8) {
-			idVec3 dodge = viewAxis[0];
-			idAngles ang(0, dodge.ToYaw(), 0);
-			dodge = -600 * ang.ToForward();
-			idVec3 bounce(0, 0, 30);
-			physicsObj.SetLinearVelocity(physicsObj.GetLinearVelocity() + dodge + bounce);
-			return false;
-		}
-	}
-
-	if ( !aifl.damage && gameLocal.time - pain.lastTakenTime > 1500 ) {
-		return false;
-	}
 	
 	// enemy must be in front to jump backwards
 	if ( !enemy.ent || !enemy.fl.inFov || !enemy.fl.visible ) {
@@ -239,20 +219,6 @@ bool rvMonsterStroggMarine::CheckAction_EvadeLeft ( rvAIAction* action, int anim
 	if ( !TestAnimMove ( animNum ) ) {
 		return false;
 	}
-	if (hitstun > gameLocal.time){
-		return false;
-	}
-	if (this->health < spawnArgs.GetInt("health" "80") * .75) {
-		int a = gameLocal.random.RandomInt(9);
-		if (a = 8) {
-			idVec3 dodge = viewAxis[0];
-			idAngles ang(0, dodge.ToYaw(), 0);
-			dodge = -600 * ang.ToRight();
-			idVec3 bounce(0, 0, 30);
-			physicsObj.SetLinearVelocity(physicsObj.GetLinearVelocity() + dodge + bounce);
-			return false;
-		}
-	}
 	return true;
 }
 
@@ -261,29 +227,13 @@ bool rvMonsterStroggMarine::CheckAction_EvadeLeft ( rvAIAction* action, int anim
 rvMonsterStroggMarine::CheckAction_EvadeRight
 ================
 */
-bool rvMonsterStroggMarine::CheckAction_EvadeRight ( rvAIAction* action, int animNum ) {
-	if (hitstun > gameLocal.time){
-		return false;
-	}
-	if (this->health < spawnArgs.GetInt("health" "80") * .75) {
-			int a = gameLocal.random.RandomInt(9);
-			if (a = 8) {
-				idVec3 dodge = viewAxis[0];
-				idAngles ang(0, dodge.ToYaw(), 0);
-				dodge = 600 * ang.ToRight();
-				idVec3 bounce(0, 0, 30);
-				physicsObj.SetLinearVelocity(physicsObj.GetLinearVelocity() + dodge + bounce);
-				return false;
-			}
+bool rvMonsterStroggMarine::CheckAction_EvadeRight(rvAIAction* action, int animNum) {
+		// TODO: Dont eveade unless it was coming from directly in front of us
+		if (!TestAnimMove(animNum)) {
+			return false;
 		}
-
-	// TODO: Dont eveade unless it was coming from directly in front of us
-	if ( !TestAnimMove ( animNum ) ) {
-		return false;
+		return true;
 	}
-	return true;
-}
-
 /*
 ================
 rvMonsterStroggMarine::CheckAction_Strafe
@@ -304,12 +254,7 @@ bool rvMonsterStroggMarine::CheckAction_Strafe ( rvAIAction* action, int animNum
 
 	if ( !TestAnimMove ( animNum ) ) {
 		//well, at least try a new attack position
-		if ( combat.tacticalCurrent == AITACTICAL_RANGED ) {
 			combat.tacticalUpdateTime = 0;
-		}
-		return false;
-	}
-	if (hitstun > gameLocal.time){
 		return false;
 	}
 	return true;

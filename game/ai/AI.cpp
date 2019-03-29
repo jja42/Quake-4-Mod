@@ -815,7 +815,6 @@ void idAI::Spawn( void ) {
 	// Initialize actions	
 	actionEvadeLeft.Init		( spawnArgs, "action_evadeLeft",		NULL,					0 );
 	actionEvadeRight.Init		( spawnArgs, "action_evadeRight",		NULL, 					0 );
-	actionRangedAttack.Init		(spawnArgs, "action_rangedAttack",		NULL,					AIACTIONF_ATTACK);
 	actionMeleeAttack.Init		( spawnArgs, "action_meleeAttack",		NULL, 					AIACTIONF_ATTACK|AIACTIONF_MELEE );
 	actionLeapAttack.Init		( spawnArgs, "action_leapAttack",		NULL, 					AIACTIONF_ATTACK );
 	actionJumpBack.Init			( spawnArgs, "action_jumpBack",			NULL, 					0 );
@@ -1250,6 +1249,24 @@ idAI::UpdateFocus
 ============
 */
 void idAI::UpdateFocus ( const idMat3& orientationAxis ) {	
+	if (health < 40 && (blocktime + 10000)< gameLocal.time) {
+		this->blocktime = gameLocal.time + 1000;
+	}
+	if (hitstun > gameLocal.time){
+		physicsObj.SetLinearVelocity(vec3_zero);
+	}
+	if (blocktime > gameLocal.time){
+		this->fl.takedamage = false;
+		this->blocking = true;
+	}
+	else{
+		this->fl.takedamage = true;
+		this->blocking = false;
+	}
+	if (blocking){
+		physicsObj.SetLinearVelocity(vec3_zero);
+		StartSound("snd_block", SND_CHANNEL_ANY, 0, false, NULL);
+	}
 	// Alwasy look at enemy	
 	if ( !allowJointMod || !allowEyeFocus ) {
 		SetFocus ( AIFOCUS_NONE, 0 );
@@ -1366,7 +1383,6 @@ idAI::UpdateStates
 */
 void idAI::UpdateStates ( void ) {
 	MEM_SCOPED_TAG(tag,MA_DEFAULT);
-
 	// Continue updating tactical state if for some reason we dont have one 
 	if ( !aifl.dead && !aifl.scripted && !aifl.action && stateThread.IsIdle ( ) && aifl.scriptedEndWithIdle ) {
 		UpdateTactical ( 0 );
@@ -1377,9 +1393,11 @@ void idAI::UpdateStates ( void ) {
 	// clear the hit enemy flag so we catch the next time we hit someone
 	aifl.hitEnemy = false;
 
-	if ( move.fl.allowHiddenMove || !IsHidden() ) {
+	if (move.fl.allowHiddenMove || !IsHidden()) {
 		// update the animstate if we're not hidden
-		UpdateAnimState();
+		if (hitstun < gameLocal.time){
+			UpdateAnimState();
+		}
 	}
 }
 
@@ -1535,7 +1553,16 @@ idAI::Pain
 bool idAI::Pain( idEntity *inflictor, idEntity *attacker, int damage, const idVec3 &dir, int location ) {
 	aifl.pain   = idActor::Pain( inflictor, attacker, damage, dir, location );
 	aifl.damage = true;
-
+	if (damage > 4){
+		this->hitstun = gameLocal.time + 500;
+	}
+	else if (damage < 4){
+		this->hitstun = gameLocal.time + 1000;
+		this->move.fl.noRun;
+	}
+	else{
+		this->hitstun = gameLocal.time + 1500;
+	}
 	// force a blink
 	blink_time = 0;
 
@@ -2478,7 +2505,7 @@ bool idAI::Attack(const char* attackName, jointHandle_t joint, idEntity* target,
 		}
 
 		// Ranged attack (hitscan or projectile)?
-		return (AttackRanged(attackName, attackDict, joint, target, pushVelocity) != NULL);
+		return false;
 	}
 
 /*

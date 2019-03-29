@@ -14,7 +14,6 @@ public:
 	CLASS_PROTOTYPE( rvEffect );
 
 	rvEffect ( void );
-
 	const bool		GetEndOrigin				( idVec3 &result ) const;
 	void			SetEndOrigin				( const idVec3 &origin );
 

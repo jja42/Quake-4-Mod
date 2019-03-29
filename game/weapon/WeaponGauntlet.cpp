@@ -229,7 +229,6 @@ void rvWeaponGauntlet::Attack(void) {
 
 	// Entity we hit?
 	ent = gameLocal.entities[tr.c.entityNum];
-
 	// If the impact material changed then stop the impact effect 
 	if ((tr.c.materialType && tr.c.materialType->Index() != impactMaterial) ||
 		(!tr.c.materialType && impactMaterial != -1)) {
@@ -284,28 +283,24 @@ void rvWeaponGauntlet::Attack(void) {
 		nextAttackTime = gameLocal.time + 100;
 		if (ent) {
 			if (ent->fl.takedamage) {
-				idActor* actor_ent = 0;
-				if (ent->IsType(idActor::GetClassType()))	{
-					actor_ent = static_cast<idActor*>(ent);
-					actor_ent->hitstun = gameLocal.time + 30000;
+				float dmgScale = 1.0f;
+				if (tr.endpos[2] > 60){
+					dmgScale = 2.0f;
 				}
-				float dmgScale = 1.0f; 
+				else if(tr.endpos[2] < 0){
+					dmgScale = 0.5f;
+				}
 				if (owner->inventory.supercharged) {
-					dmgScale = 10.0f;
+					dmgScale = 50.0f;
+					owner->inventory.supercharged = false;
 				}
 				ent->Damage(owner, owner, playerViewAxis[0], spawnArgs.GetString("def_damage"), dmgScale, 0);
 				StartSound("snd_hit", SND_CHANNEL_ANY, 0, false, NULL);
-				if (ent->spawnArgs.GetBool("bleed")) {
-					PlayLoopSound(LOOP_FLESH);
-				}
-				else {
-					PlayLoopSound(LOOP_NONE);
-				}
+				PlayLoopSound(LOOP_NONE);
 			}
 		}
 	}
 }
-
 /*
 ================
 rvWeaponGauntlet::StartBlade

@@ -495,6 +495,9 @@ public:
 	idPhysics_Monster		physicsObj;
 	
 	// weapon/attack vars
+	bool					blocking;
+	int						hitstun;
+	int						dodgetime;
 	bool					lastHitCheckResult;
 	int						lastHitCheckTime;
 	int						lastAttackTime;
@@ -539,8 +542,6 @@ public:
 	float					headFocusRate;
 	float					eyeFocusRate;
 	
-	//hitstun and block
-	int hitstun;
 	int blocktime;
 
 	// joint controllers

@@ -457,7 +457,7 @@ bool idAI::PerformAction ( rvAIAction* action, bool (idAI::*condition)(rvAIActio
 	// Special code for attacks	
 	if ( action->fl.isAttack ) {
 		// Attacks disabled?
-		if ( ai_disableAttacks.GetBool() ) {
+		if (ai_disableAttacks.GetBool() || hitstun > gameLocal.time) {
 			action->status = rvAIAction::STATUS_FAIL_DISABLED;
 			return false;
 		}
